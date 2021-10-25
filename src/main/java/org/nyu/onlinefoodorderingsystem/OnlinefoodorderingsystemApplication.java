@@ -1,4 +1,4 @@
-package com.example.onlinefoodorderingsystem;
+package org.nyu.onlinefoodorderingsystem;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

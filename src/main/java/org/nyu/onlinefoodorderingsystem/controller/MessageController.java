@@ -1,4 +1,4 @@
-package com.example.onlinefoodorderingsystem.controller;
+package org.nyu.onlinefoodorderingsystem.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

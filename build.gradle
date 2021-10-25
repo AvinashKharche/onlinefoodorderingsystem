@@ -1,7 +1,8 @@
 plugins {
-    id 'org.springframework.boot' version '2.5.6'
+    id 'org.springframework.boot' version '2.1.0.RELEASE'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
     id 'java'
+    id 'com.moowork.node' version '1.2.0'
 }
 
 group = 'com.example'
@@ -14,21 +15,103 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.junit.jupiter:junit-jupiter:5.7.0'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
 }
 
-node {
-    version = '14.15.4'
-    npmVersion = '6.14.10'
-    download = true
+processResources {
+    dependsOn 'copyVueArtifactsToSpringApp'
 }
+//
+//task npmBuild(type: Exec) {
+//    workingDir = file('./vue-frontend')
+//    commandLine 'npm', 'run', 'build'
+//}
+
+
+//node {
+//    version = '14.15.4'
+//    npmVersion = '6.14.10'
+//    download = true
+//}
 
 clean.doFirst {
     delete './vue-frontend/dist'
     delete './src/main/resources/static'
+}
+
+task npmAuditFix(type: NpmTask) {
+    group 'Food Delivery Build'
+    description = 'Runs NPM audit fix to keep NPM packages up to date'
+    workingDir = file('./vue-frontend')
+    args = ['audit', 'fix']
+}
+
+task vueNpmInstall(type: NpmTask, dependsOn: npmAuditFix) {
+    group 'Food Delivery Build'
+    description = 'Installs dependencies from package.json in vue-frontend directory'
+    workingDir = file('./vue-frontend')
+    args = ['install']
+}
+
+task vueNpmBuild(type: NpmTask, dependsOn: vueNpmInstall) {
+    group 'Food Delivery Build'
+    description = 'Creates production build of Vue JS frontend code'
+    workingDir = file('./vue-frontend')
+    args = ['run', 'build']
+}
+
+task copyVueArtifactsToSpringApp(type: Copy, dependsOn: vueNpmBuild) {
+    doFirst {
+        println 'Copying vue artifacts into SpringBoot project'
+    }
+    group 'Food Delivery Build'
+    description = 'Copies deployable artifacts from Vue JS build into SpringBoot web app'
+    delete './src/main/resources/static/*'
+    from './vue-frontend/dist'
+    into './src/main/resources/static'
+}
+
+task copyVueArtifactsToSpringAppSkipVueBuild(type: Copy) {
+    doFirst {
+        println 'Copying vue artifacts into SpringBoot project'
+    }
+    group 'Food Delivery Build'
+    description = 'Copies deployable artifacts from Vue JS build into SpringBoot web app'
+    delete './src/main/resources/static/*'
+    from './vue-frontend/dist'
+    into './src/main/resources/static'
+}
+
+task buildAll(type: GradleBuild) {
+    group 'Food Delivery Build'
+    description = 'Builds VUE artifacts and deployable SpringBoot jar'
+    tasks = ['copyVueArtifactsToSpringApp', 'build']
+}
+
+build.mustRunAfter copyVueArtifactsToSpringApp
+
+task npmRunServe(type: NpmTask, dependsOn: vueNpmInstall) {
+    group 'Food Delivery Dev'
+    description = 'Starts Vue JS dev server on port 8080'
+    workingDir = file("${project.projectDir}/vue-frontend")
+    args = ['run', 'serve']
+}
+
+
+task startSpringBoot(type: GradleBuild) {
+    group 'Food Delivery Dev'
+    description = 'Starts SpringBoot dev server on port 8081'
+    tasks = ['bootRun']
+}
+
+task startAll(type: GradleBuild) {
+    group 'Food Delivery Dev'
+    description = 'Starts Vue JS dev server on port 8080, SpringBoot dev server on port 8081 and MySQL database on port 3307 in Docker'
+    tasks = ['startVue', 'startSpringBoot']
 }
 
 test {
